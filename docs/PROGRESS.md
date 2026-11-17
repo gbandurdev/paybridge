@@ -21,4 +21,20 @@ Tracks phase status and decisions made while building against `docs/PLAN.md`. Up
 
 **Update (2026-11-17):** minimum PHP bumped from 8.2 to 8.3 at the user's request — `composer.json` (`require.php` → `^8.3`, `config.platform.php` → `8.3.0`), `phpstan.neon.dist` (`phpVersion: 80300`), CI matrix → `8.3/8.4/8.5`, and `docs/PLAN.md` §2 and the Phase 0 task line updated to match. Re-verified `composer test`/`stan`/`cs` after the change.
 
-**Next:** Phase 1 — Domain + contracts (`Money`, `Currency`, DTOs, `PaymentStatus`, `Capability`, `StateMachine`, exception hierarchy, interfaces).
+## Phase 1: Domain + contracts — Done (2026-11-17)
+
+**Scope:** `src/Domain/` (`Money`, `Currency`, `Capability`, `PaymentStatus`, `Customer`, `NextAction`/`NextActionType`, `PaymentRequest`, `CaptureRequest`, `RefundRequest`, `Payment`, `Refund`, `PaymentEvent`), `src/Status/` (`StateMachine`, `StatusMap`), `src/Exception/` (full hierarchy per PLAN.md §12/§13), `src/Contracts/` (`Gateway`, `Supports*`, `IdempotencyStore`, `LockStore`, `EventStore`, `Transport`/`TransportResponse`). No behavior/IO — pure value objects, enums and interfaces.
+
+**DoD:** `composer test` (97 tests, 211 assertions), `composer stan` (level 9, clean) and `composer cs` all pass. Coverage (`phpunit --coverage-text` with Xdebug) is 100% methods/lines on every class in `Domain/` and `Status/` — verified via clover XML per-class breakdown, not just the aggregate number (the aggregate also folds in `Contracts/TransportResponse`, which is untested by design, see below).
+
+**Decisions made:**
+- No new Composer dependencies added. `Contracts/Transport` is deliberately decoupled from PSR-18/PSR-7 (takes method/url/headers/body primitives, returns a plain `TransportResponse` value object) so the PSR-18 adapter can be built in Phase 2 without pulling `psr/http-client`/`psr/http-factory` in before anything consumes them — same "add packages only when used" rule as Phase 0.
+- `Capability` enum cases are the union of every capability named anywhere in PLAN.md (§3, §6.2): `AUTHORIZE`, `CAPTURE`, `REFUND`, `REFUND_PARTIAL`, `VOID`, `REDIRECT_FLOW`, `WEBHOOKS`, `THREE_DS`, `PROVIDER_IDEMPOTENCY` — PLAN.md never gives one authoritative list.
+- `Contracts/SupportsWebhooks` takes raw `(string $payload, array $headers)` rather than a `WebhookRequest` DTO, since `Webhook/WebhookRequest.php` belongs to Phase 4 (`WebhookHandler`) per the directory layout — avoids forward-depending on a type that doesn't exist yet.
+- `Contracts/SupportsRedirect` is an empty marker interface this phase — redirect completion goes through the existing `capture()`/`find()` flows per-driver; PLAN.md doesn't specify extra methods and Phase 6 driver needs aren't known yet.
+- `StateMachine::canTransition()` tolerates same-status "transitions" (returns `true`) to support idempotent/duplicate webhook redelivery; actual event dedup is a separate, later concern (`EventStore`, Phase 4).
+- `Money`/`Currency` reject floats at the type-hint boundary (`string`-only inputs under `strict_types=1`), reject negative amounts, and reject more fractional digits than the currency's ISO 4217 exponent allows.
+- `IdempotencyConflict`'s reason is a backed enum (`IdempotencyConflictReason: IN_PROGRESS | PAYLOAD_MISMATCH`) rather than a bare string, for PHPStan-level type safety.
+- Deleted the Phase 0 `tests/Unit/ToolchainSmokeTest.php` placeholder now that real Domain/Status tests exist.
+
+**Next:** Phase 2 — Resilience core (`Pipeline` + middlewares, `RetryPolicy`, `ExponentialJitterBackoff`, `CircuitBreaker`, `RequestFingerprint`, in-memory stores, injectable `Clock`/`Sleeper`).
