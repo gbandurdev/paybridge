@@ -16,6 +16,32 @@ final class InMemoryEventStore implements EventStore
 
     public function has(string $eventKey): bool
     {
+        return $this->isLive($eventKey);
+    }
+
+    public function remember(string $eventKey, int $ttlSeconds): void
+    {
+        $this->expiresAt[$eventKey] = $this->clock->now()->modify(sprintf('+%d seconds', $ttlSeconds));
+    }
+
+    public function claim(string $eventKey, int $ttlSeconds): bool
+    {
+        if ($this->isLive($eventKey)) {
+            return false;
+        }
+
+        $this->remember($eventKey, $ttlSeconds);
+
+        return true;
+    }
+
+    public function release(string $eventKey): void
+    {
+        unset($this->expiresAt[$eventKey]);
+    }
+
+    private function isLive(string $eventKey): bool
+    {
         $expiresAt = $this->expiresAt[$eventKey] ?? null;
 
         if ($expiresAt === null) {
@@ -29,10 +55,5 @@ final class InMemoryEventStore implements EventStore
         }
 
         return true;
-    }
-
-    public function remember(string $eventKey, int $ttlSeconds): void
-    {
-        $this->expiresAt[$eventKey] = $this->clock->now()->modify(sprintf('+%d seconds', $ttlSeconds));
     }
 }

@@ -501,6 +501,7 @@ Each driver ships a `SandboxScenarios` class that maps `success`, `declined`, `3
 - Laravel package: service provider (auto-discovery), facade, publishable config, migrations, `paybridge:install`.
 - Symfony bundle: config tree, services, Flex recipe (+ `paybridge:install` fallback), Doctrine migrations.
 - Both: webhook route/controller, `paybridge:doctor`, `paybridge:test`, `paybridge:webhook:replay`, the dev-only demo UI (§11.3), the live-key guard.
+- **Lock store**: the Laravel bridge's default `LockStore` must be backed by Laravel's own `Cache::lock()`, and the Symfony bridge's default must be backed by `symfony/lock` — **never** the core package's `Store\Cache\CacheLockStore` by default in either bridge. Both frameworks already ship a real atomic distributed lock; `CacheLockStore` is a generic, best-effort, non-atomic fallback for plain-PHP/dev use only (see its docblock).
 - `bin/sandbox-app`, `docker-compose.sandbox.yml`, `.env.sandbox.example`.
 - CI job: fresh Laravel + fresh Symfony app → install → `doctor` → `paybridge:test fake --scenario=success|declined|timeout --idempotency-check`.
 - **DoD:** on a clean machine, the §11.1 commands work end-to-end with the Fake gateway in both frameworks, using SQLite and no Redis.
