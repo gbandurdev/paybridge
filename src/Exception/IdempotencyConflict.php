@@ -23,4 +23,23 @@ final class IdempotencyConflict extends PaymentException
     {
         return $this->reason;
     }
+
+    protected function dataForArray(): array
+    {
+        return [...parent::dataForArray(), 'reason' => $this->reason->value];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            self::toNonEmptyString($data['message'] ?? null),
+            IdempotencyConflictReason::from(self::toNonEmptyString($data['reason'] ?? null)),
+            self::toNullableString($data['gateway'] ?? null),
+            self::toNullableString($data['operation'] ?? null),
+            self::toArrayValue($data['raw'] ?? null),
+        );
+    }
 }

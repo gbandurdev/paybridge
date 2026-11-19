@@ -41,4 +41,23 @@ final class RefundTest extends TestCase
 
         self::assertSame([], $refund->raw);
     }
+
+    public function testToArrayFromArrayRoundTrip(): void
+    {
+        $refund = new Refund(
+            providerReference: 're_1',
+            paymentReference: 'pay_1',
+            status: PaymentStatus::REFUNDED,
+            amount: Money::of('10.00', 'EUR'),
+            raw: ['id' => 're_1'],
+        );
+
+        $reconstructed = Refund::fromArray($refund->toArray());
+
+        self::assertSame($refund->providerReference, $reconstructed->providerReference);
+        self::assertSame($refund->paymentReference, $reconstructed->paymentReference);
+        self::assertSame($refund->status, $reconstructed->status);
+        self::assertTrue($refund->amount->equals($reconstructed->amount));
+        self::assertSame($refund->raw, $reconstructed->raw);
+    }
 }

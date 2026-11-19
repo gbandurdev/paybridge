@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace PayBridge\Tests\Unit\Exception;
 
 use PayBridge\Exception\AuthenticationFailed;
-use PayBridge\Exception\CircuitOpen;
 use PayBridge\Exception\InvalidRequest;
 use PayBridge\Exception\InvalidSignature;
 use PayBridge\Exception\PaymentException;
@@ -25,7 +24,9 @@ final class NonRetryableExceptionsTest extends TestCase
         yield InvalidRequest::class => [InvalidRequest::class];
         yield InvalidSignature::class => [InvalidSignature::class];
         yield UnsupportedOperation::class => [UnsupportedOperation::class];
-        yield CircuitOpen::class => [CircuitOpen::class];
+        // CircuitOpen is NOT here (Phase 2): it implements RetryableException so
+        // IdempotencyMiddleware treats a breaker trip like any other transient failure
+        // instead of permanently caching it — see RetryableExceptionsTest.
     }
 
     /**

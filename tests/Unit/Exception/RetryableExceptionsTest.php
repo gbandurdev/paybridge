@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace PayBridge\Tests\Unit\Exception;
 
 use PayBridge\Exception\CardDeclined;
+use PayBridge\Exception\CircuitOpen;
 use PayBridge\Exception\NetworkException;
 use PayBridge\Exception\ProviderUnavailable;
 use PayBridge\Exception\RateLimitedException;
@@ -21,6 +22,27 @@ final class RetryableExceptionsTest extends TestCase
         self::assertTrue($exception->retryable());
         self::assertSame('stripe', $exception->gateway());
         self::assertSame('charge', $exception->operation());
+    }
+
+    public function testNetworkExceptionAmbiguousDefaultsToFalse(): void
+    {
+        self::assertFalse((new NetworkException('connection refused'))->ambiguous());
+    }
+
+    public function testNetworkExceptionAmbiguousCanBeSetTrue(): void
+    {
+        self::assertTrue((new NetworkException('timed out', ambiguous: true))->ambiguous());
+    }
+
+    public function testCircuitOpenIsRetryable(): void
+    {
+        // CircuitOpen implements RetryableException so IdempotencyMiddleware treats a
+        // breaker trip like any other transient failure (stores nothing) rather than
+        // permanently caching it as a terminal failure for the idempotency key.
+        $exception = new CircuitOpen('breaker open', gateway: 'stripe');
+
+        self::assertInstanceOf(RetryableException::class, $exception);
+        self::assertTrue($exception->retryable());
     }
 
     public function testProviderUnavailableIsRetryable(): void

@@ -26,4 +26,25 @@ final class RateLimitedException extends PaymentException implements RetryableEx
     {
         return $this->retryAfterSeconds;
     }
+
+    protected function dataForArray(): array
+    {
+        return [...parent::dataForArray(), 'retryAfterSeconds' => $this->retryAfterSeconds];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            self::toNonEmptyString($data['message'] ?? null),
+            self::toNullableInt($data['retryAfterSeconds'] ?? null),
+            self::toNullableString($data['gateway'] ?? null),
+            self::toNullableString($data['operation'] ?? null),
+            self::toNullableString($data['providerCode'] ?? null),
+            self::toNullableInt($data['httpStatus'] ?? null),
+            self::toArrayValue($data['raw'] ?? null),
+        );
+    }
 }
